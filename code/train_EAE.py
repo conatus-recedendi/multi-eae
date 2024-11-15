@@ -23,6 +23,7 @@ import random
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
+
 # import wandb
 import numpy as np
 from datasets import load_dataset, load_metric
@@ -63,29 +64,29 @@ class DataTrainingArguments:
     into argparse arguments to be able to specify them on
     the command line.
     """
+
     overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached preprocessed datasets or not."}
+        default=False,
+        metadata={"help": "Overwrite the cached preprocessed datasets or not."},
     )
     train_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the training data."}
+        default=None,
+        metadata={"help": "A csv or a json file containing the training data."},
     )
     validation_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the validation data."}
+        default=None,
+        metadata={"help": "A csv or a json file containing the validation data."},
     )
-    test_file: Optional[str] = field(default=None, metadata={"help": "A csv or a json file containing the test data."})
+    test_file: Optional[str] = field(
+        default=None,
+        metadata={"help": "A csv or a json file containing the test data."},
+    )
 
-    span_len: int = field(
-        default=8
-    )
-    max_len: int = field(
-        default=512
-    )
-    meta_file: str = field(
-        default=''
-    )
-    task_name: str = field(
-        default=''
-    )
+    span_len: int = field(default=8)
+    max_len: int = field(default=512)
+    meta_file: str = field(default="")
+    task_name: str = field(default="")
+
 
 @dataclass
 class ModelArguments:
@@ -94,81 +95,96 @@ class ModelArguments:
     """
 
     model_name_or_path: str = field(
-        metadata={"help": "Path to pretrained model or model identifier from huggingface.co/models"}
+        metadata={
+            "help": "Path to pretrained model or model identifier from huggingface.co/models"
+        }
     )
     config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
+        default=None,
+        metadata={
+            "help": "Pretrained config name or path if not the same as model_name"
+        },
     )
     tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None,
+        metadata={
+            "help": "Pretrained tokenizer name or path if not the same as model_name"
+        },
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+        metadata={
+            "help": "Where do you want to store the pretrained models downloaded from huggingface.co"
+        },
     )
     use_fast_tokenizer: bool = field(
         default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
+        metadata={
+            "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."
+        },
     )
     model_revision: str = field(
         default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
+        metadata={
+            "help": "The specific model version to use (can be a branch name, tag name or commit id)."
+        },
     )
     use_auth_token: bool = field(
         default=False,
         metadata={
             "help": "Will use the token generated when running `transformers-cli login` (necessary to use this script "
-                    "with private models)."
+            "with private models)."
         },
     )
-    pos_loss_weight: float = field(
-        default=1.0
-    )
-    span_len_embedding_range: int = field(
-        default=50
-    )
-    span_len_embedding_hidden_size: int = field(
-        default=20
-    )
-    not_bert_learning_rate: float = field(
-        default=0.0001
-    )
-    lambda_boundary: float = field(
-        default=0.0
-    )
-    event_embedding_size: int = field(
-        default=200
-    )
+    pos_loss_weight: float = field(default=1.0)
+    span_len_embedding_range: int = field(default=50)
+    span_len_embedding_hidden_size: int = field(default=20)
+    not_bert_learning_rate: float = field(default=0.0001)
+    lambda_boundary: float = field(default=0.0)
+    event_embedding_size: int = field(default=200)
+
 
 def main():
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, TrainingArguments)
+    )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args = parser.parse_json_file(json_file=sys.argv[1])
+        model_args, data_args, training_args = parser.parse_json_file(
+            json_file=sys.argv[1]
+        )
     else:
         model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
-    
-
     # check task
     assert data_args.task_name in [
-        # 'rams', 
-        'wikievent'
-      ]
-    assert data_args.train_file is not None and data_args.validation_file is not None and data_args.test_file is not None
+        # 'rams',
+        "wikievent"
+    ]
+    assert (
+        data_args.train_file is not None
+        and data_args.validation_file is not None
+        and data_args.test_file is not None
+    )
 
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
-    logger.setLevel(logging.INFO if is_main_process(training_args.local_rank) else logging.WARN)
+    logger.setLevel(
+        logging.INFO if is_main_process(training_args.local_rank) else logging.WARN
+    )
 
     # Detecting last checkpoint.
     last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
+    if (
+        os.path.isdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
+    ):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
             raise ValueError(
@@ -181,16 +197,18 @@ def main():
                 "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
             )
         logger.info("hi")
-    # Cuda
+    # Check cuda setting
     logger.info(torch.cuda.is_available())
     logger.info(torch.version)
     logger.info(torch.version.cuda)
     logger.info(torch.backends.cudnn.enabled)
+
     # Log on each process the small summary:
     logger.warning(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, n_gpu: {training_args.n_gpu}"
         + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
     )
+
     # Set the verbosity to info of the Transformers logger (on main process only):
     if is_main_process(training_args.local_rank):
         transformers.utils.logging.set_verbosity_info()
@@ -201,9 +219,14 @@ def main():
     # Set seed before initializing model.
     set_seed(training_args.seed)
 
-    datasets = load_dataset("text", data_files={'train': data_args.train_file,
-                                                'validation': data_args.validation_file,
-                                                'test': data_args.test_file})
+    datasets = load_dataset(
+        "text",
+        data_files={
+            "train": data_args.train_file,
+            "validation": data_args.validation_file,
+            "test": data_args.test_file,
+        },
+    )
     # ======== construct meta schema ===========
     with open(data_args.meta_file) as f:
         meta = json.load(f)
@@ -226,7 +249,11 @@ def main():
             num_labels += 1
     event_num = len(event2id)
     config = AutoConfig.from_pretrained(
-        model_args.config_name if model_args.config_name else model_args.model_name_or_path,
+        (
+            model_args.config_name
+            if model_args.config_name
+            else model_args.model_name_or_path
+        ),
         num_labels=num_labels,
         cache_dir=model_args.cache_dir,
         revision=model_args.model_revision,
@@ -243,9 +270,13 @@ def main():
 
     # ======== make some additional setting ==============
 
-    if model_args.model_name_or_path.startswith('bert'):
+    if model_args.model_name_or_path.startswith("bert"):
         tokenizer = BertTokenizer.from_pretrained(
-            model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+            (
+                model_args.tokenizer_name
+                if model_args.tokenizer_name
+                else model_args.model_name_or_path
+            ),
             cache_dir=model_args.cache_dir,
             use_fast=model_args.use_fast_tokenizer,
             revision=model_args.model_revision,
@@ -259,15 +290,19 @@ def main():
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
             lambda_boundary=model_args.lambda_boundary,
-            event_embedding_size=model_args.event_embedding_size
+            event_embedding_size=model_args.event_embedding_size,
         )
         TRIGGER_LEFT = 5  # special token for trigger
         TRIGGER_RIGHT = 6
-        EVENT_START = 104 # special token for event
-        ROLE_START = 400 # special token for roles
-    elif model_args.model_name_or_path.startswith('roberta'):
+        EVENT_START = 104  # special token for event
+        ROLE_START = 400  # special token for roles
+    elif model_args.model_name_or_path.startswith("roberta"):
         tokenizer = RobertaTokenizer.from_pretrained(
-            model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
+            (
+                model_args.tokenizer_name
+                if model_args.tokenizer_name
+                else model_args.model_name_or_path
+            ),
             cache_dir=model_args.cache_dir,
             use_fast=model_args.use_fast_tokenizer,
             revision=model_args.model_revision,
@@ -281,31 +316,32 @@ def main():
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
             lambda_boundary=model_args.lambda_boundary,
-            event_embedding_size=model_args.event_embedding_size
+            event_embedding_size=model_args.event_embedding_size,
         )
-        TRIGGER_LEFT = tokenizer("[")['input_ids'][1]
-        TRIGGER_RIGHT = tokenizer("]")['input_ids'][1]
-        ROLE_START = len(tokenizer) + len(event2id) 
+        TRIGGER_LEFT = tokenizer("[")["input_ids"][1]
+        TRIGGER_RIGHT = tokenizer("]")["input_ids"][1]
+        ROLE_START = len(tokenizer) + len(event2id)
         EVENT_START = len(tokenizer)
         event_nums = len(event2id)
         role_nums = num_labels
-        special_tokens_dict = {'additional_special_tokens': []}
+        special_tokens_dict = {"additional_special_tokens": []}
         for i_e in range(event_nums):
-            special_tokens_dict['additional_special_tokens'].append('[unused' + str(EVENT_START + i_e) + ']')
+            special_tokens_dict["additional_special_tokens"].append(
+                "[unused" + str(EVENT_START + i_e) + "]"
+            )
         for i_r in range(role_nums):
-            special_tokens_dict['additional_special_tokens'].append('[unused' + str(ROLE_START + i_r) + ']')
+            special_tokens_dict["additional_special_tokens"].append(
+                "[unused" + str(ROLE_START + i_r) + "]"
+            )
         num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
-        model.resize_token_embeddings(len(tokenizer)) # update the embedding
+        model.resize_token_embeddings(len(tokenizer))  # update the embedding
     else:
         assert False
 
-
-
-
     def preprocess_function(example, idx, split):
-        example = json.loads(example['text'])
-        doc_key = example['doc_key']
-        sentences = example['sentences']
+        example = json.loads(example["text"])
+        doc_key = example["doc_key"]
+        sentences = example["sentences"]
         snt2span = []
         start, end = 0, 0
         for idx, sen in enumerate(sentences):
@@ -320,7 +356,7 @@ def main():
                     return snt
             assert False
 
-        trigger = example['evt_triggers'][0]
+        trigger = example["evt_triggers"][0]
         trigger_b, trigger_e, event = trigger[0], trigger[1], trigger[2][0][0]
         trigger_snt_id = which_snt(snt2span, [trigger_b, trigger_e])
         eventid = event2id[event]
@@ -331,10 +367,15 @@ def main():
         wordidx2subwordidx = []
 
         exclude_words = []  # non-argument spans exclusion
-        if data_args.task_name == 'wikievent':
-            exclude_symbols = [',', '!', '?', ':']  # We select some normal symols that can not appear in the middle of a argument span. For different datasets, you can choose different symbols.
+        if data_args.task_name == "wikievent":
+            exclude_symbols = [
+                ",",
+                "!",
+                "?",
+                ":",
+            ]  # We select some normal symols that can not appear in the middle of a argument span. For different datasets, you can choose different symbols.
         else:
-            exclude_symbols = [',', '.', '!', '?', ':']
+            exclude_symbols = [",", ".", "!", "?", ":"]
         for i, sentence in enumerate(sentences):
             subwords_snt2span_st = len(input_ids)
             for j, word in enumerate(sentence):
@@ -347,16 +388,20 @@ def main():
                     trig_sub_e = len(input_ids)
                     exclude_words.append(trig_sub_e)
                     input_ids.append(TRIGGER_RIGHT)  # Special token
-                subwords_ids = tokenizer(word, add_special_tokens=False, return_attention_mask=False)['input_ids']
+                subwords_ids = tokenizer(
+                    word, add_special_tokens=False, return_attention_mask=False
+                )["input_ids"]
                 if word in exclude_symbols:
                     exclude_idx = []
                     for kk in range(len(subwords_ids)):
                         exclude_idx.append(len(input_ids) + kk)
                     exclude_words.extend(exclude_idx)
-                wordidx2subwordidx.append((len(input_ids), len(input_ids) + len(subwords_ids) - 1))  # [a, b]
+                wordidx2subwordidx.append(
+                    (len(input_ids), len(input_ids) + len(subwords_ids) - 1)
+                )  # [a, b]
                 input_ids.extend(subwords_ids)
                 now_snt_idx += 1
-            subwords_snt2span.append([subwords_snt2span_st, len(input_ids) -1])
+            subwords_snt2span.append([subwords_snt2span_st, len(input_ids) - 1])
 
         model_max_len = 1024
         max_role_token_len = 30  # We set the max length of role list 30
@@ -368,7 +413,7 @@ def main():
         label_mask[0] = 1
         label_mask = np.array(label_mask)
         subwords_span2snt = []
-        for link in example['gold_evt_links']:
+        for link in example["gold_evt_links"]:
             role_b, role_e = link[1]
             role = link[-1]
             if role not in eventid2role2id[eventid]:
@@ -376,44 +421,54 @@ def main():
             roleid = eventid2role2id[eventid][role]
             base_roleid = list(eventid2id2role[eventid].keys())[0]
             upper_roleid = list(eventid2id2role[eventid].keys())[-1]
-            label_mask[base_roleid:upper_roleid+1] = 1
+            label_mask[base_roleid : upper_roleid + 1] = 1
             role_subword_start_idx = wordidx2subwordidx[role_b][0]
             role_subword_end_idx = wordidx2subwordidx[role_e][-1]
             if role_subword_end_idx < model_max_len:
                 spans.append([role_subword_start_idx, role_subword_end_idx])
                 subwords_span2snt.append(which_snt(subwords_snt2span, spans[-1]))
-                span_lens.append(min(role_subword_end_idx - role_subword_start_idx, config.len_size - 1))
+                span_lens.append(
+                    min(
+                        role_subword_end_idx - role_subword_start_idx,
+                        config.len_size - 1,
+                    )
+                )
                 span_labels.append(roleid)
 
         role_nums = label_mask.sum() - 1
         role_list = list(eventid2id2role[eventid].values())
         role_id_list = list(eventid2id2role[eventid].keys())
-        if data_args.task_name == 'rams':
+        if data_args.task_name == "rams":
             for itt in range(len(role_list)):
-                role_list[itt] = role_list[itt].split('arg')[-1][2:]
+                role_list[itt] = role_list[itt].split("arg")[-1][2:]
         if len(input_ids) > model_max_len - 1:
-            input_ids = input_ids[:model_max_len - max_role_token_len - role_nums]    # 这里默认角色
+            input_ids = input_ids[
+                : model_max_len - max_role_token_len - role_nums
+            ]  # 这里默认角色
         input_ids.append(tokenizer.sep_token_id)
         ari_len = len(input_ids)
 
-        event_split_list = event.split('.')
+        event_split_list = event.split(".")
         event_tok = EVENT_START + eventid
-
 
         input_ids.append(event_tok)
         info_dict = {}
-        info_dict['words_num'] = ari_len
-        info_dict['event_idx'] = len(input_ids) - 1
-        info_dict['event_ids'] = role_id_list
+        info_dict["words_num"] = ari_len
+        info_dict["event_idx"] = len(input_ids) - 1
+        info_dict["event_ids"] = role_id_list
 
         for item in event_split_list:
-            event_subwords_ids = tokenizer(item, add_special_tokens=False, return_attention_mask=False)['input_ids']
+            event_subwords_ids = tokenizer(
+                item, add_special_tokens=False, return_attention_mask=False
+            )["input_ids"]
             input_ids.extend(event_subwords_ids)
         input_ids.append(event_tok)
         role_idx = []
 
         for rr, role_t in enumerate(role_list):
-            role_subwords_ids = tokenizer(role_t, add_special_tokens=False, return_attention_mask=False)['input_ids']
+            role_subwords_ids = tokenizer(
+                role_t, add_special_tokens=False, return_attention_mask=False
+            )["input_ids"]
             input_ids.append(ROLE_START + role_id_list[rr])
             role_idx.append(len(input_ids) - 1)
             input_ids.extend(role_subwords_ids)
@@ -421,11 +476,14 @@ def main():
 
         input_ids.append(ROLE_START)
         role_idx.append(len(input_ids) - 1)  # 空类标签
-        info_dict['role_idxs'] = role_idx
+        info_dict["role_idxs"] = role_idx
 
-        trigger_index = wordidx2subwordidx[trigger_b][0]-1   #这里用special token 代表触发词
-        trigger_index = min(trigger_index, len(input_ids)-1) # very few times it would be out of bound so we have to ...
-
+        trigger_index = (
+            wordidx2subwordidx[trigger_b][0] - 1
+        )  # 这里用special token 代表触发词
+        trigger_index = min(
+            trigger_index, len(input_ids) - 1
+        )  # very few times it would be out of bound so we have to ...
 
         # construct start label and end label
         start_label = [0 for _ in range(len(input_ids))]
@@ -439,9 +497,9 @@ def main():
         all_non_spans = []
         for i in range(len(sentences)):
             start_idx, end_idx = subwords_snt2span[i]
-            end_idx = min(end_idx, model_max_len-1)
-            for s in range(start_idx, end_idx+1):
-                for e in range(s, end_idx+1):
+            end_idx = min(end_idx, model_max_len - 1)
+            for s in range(start_idx, end_idx + 1):
+                for e in range(s, end_idx + 1):
                     flag = 0
                     if e - s + 1 <= data_args.span_len:
                         for kkk in range(s, e + 1):
@@ -457,30 +515,51 @@ def main():
         span_num = len(spans)
 
         result = {
-            'idx': idx,
-            'split': split,
-            'input_ids': input_ids,
-            'label': span_labels,
-            'spans': spans,
-            'event_id': eventid,
-            'span_lens': span_lens,
-            'label_mask': label_mask,
-            'trigger_index': trigger_index,
-            'span_num': span_num,
-            'subwords_span2snt': subwords_span2snt,
-            'subwords_snt2span': subwords_snt2span,
-            'trigger_snt_id': trigger_snt_id,
-            'info_dict': info_dict,
-            'snt2span': snt2span,
-            'wordidx2subwordidx': wordidx2subwordidx,
-            'start_label': start_label,
-            'end_label': end_label,
+            "idx": idx,
+            "split": split,
+            "input_ids": input_ids,
+            "label": span_labels,
+            "spans": spans,
+            "event_id": eventid,
+            "span_lens": span_lens,
+            "label_mask": label_mask,
+            "trigger_index": trigger_index,
+            "span_num": span_num,
+            "subwords_span2snt": subwords_span2snt,
+            "subwords_snt2span": subwords_snt2span,
+            "trigger_snt_id": trigger_snt_id,
+            "info_dict": info_dict,
+            "snt2span": snt2span,
+            "wordidx2subwordidx": wordidx2subwordidx,
+            "start_label": start_label,
+            "end_label": end_label,
         }
         return result
 
-    train_dataset = datasets["train"].map(preprocess_function, batched=False, with_indices=True, load_from_cache_file=not data_args.overwrite_cache, fn_kwargs={'split': 'train'}, num_proc=6)
-    eval_dataset = datasets["validation"].map(preprocess_function, batched=False, with_indices=True, load_from_cache_file=not data_args.overwrite_cache, fn_kwargs={'split': 'dev'}, num_proc=6)
-    test_dataset = datasets["test"].map(preprocess_function, batched=False, with_indices=True, load_from_cache_file=not data_args.overwrite_cache, fn_kwargs={'split': 'test'}, num_proc=6)
+    train_dataset = datasets["train"].map(
+        preprocess_function,
+        batched=False,
+        with_indices=True,
+        load_from_cache_file=not data_args.overwrite_cache,
+        fn_kwargs={"split": "train"},
+        num_proc=6,
+    )
+    eval_dataset = datasets["validation"].map(
+        preprocess_function,
+        batched=False,
+        with_indices=True,
+        load_from_cache_file=not data_args.overwrite_cache,
+        fn_kwargs={"split": "dev"},
+        num_proc=6,
+    )
+    test_dataset = datasets["test"].map(
+        preprocess_function,
+        batched=False,
+        with_indices=True,
+        load_from_cache_file=not data_args.overwrite_cache,
+        fn_kwargs={"split": "test"},
+        num_proc=6,
+    )
 
     # Log a few random samples from the training set:
     if training_args.do_train:
@@ -488,10 +567,14 @@ def main():
             logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
 
     def compute_metrics(p: EvalPrediction):
-        preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions  # bsz * span_num * labelsize
+        preds = (
+            p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+        )  # bsz * span_num * labelsize
         preds = np.argmax(preds, axis=-1)  # bsz * span_num
-        spans = p.predictions[1] if isinstance(p.predictions, tuple) else None  # bsz * span_num * 2
-        labels = p.label_ids   # bsz * span_num
+        spans = (
+            p.predictions[1] if isinstance(p.predictions, tuple) else None
+        )  # bsz * span_num * 2
+        labels = p.label_ids  # bsz * span_num
 
         tp = 0
         fp = 0
@@ -519,7 +602,7 @@ def main():
             if i % 100 == 0:
                 predict = []
                 gold = []
-                for (pe, l, span) in zip(pred, label, span):
+                for pe, l, span in zip(pred, label, span):
                     if l == -100:
                         continue
                     span_len = span[1] - span[0] + 1
@@ -535,11 +618,11 @@ def main():
         p = tp / (tp + fp) if (tp + fp) > 0 else 0
         r = tp / (tp + fn) if (tp + fn) > 0 else 0
         f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
-        print('tp: {}, fn: {}, fp: {}'.format(tp, fn, fp))
+        print("tp: {}, fn: {}, fp: {}".format(tp, fn, fp))
         return {
-            'p': p,
-            'r': r,
-            'f1': f1,
+            "p": p,
+            "r": r,
+            "f1": f1,
         }
 
     def collator_fn(examples):
@@ -561,21 +644,21 @@ def main():
         trigger_snt_ids = []
 
         for example in examples:
-            input_ids.append(torch.LongTensor(example['input_ids']))
-            event_ids.append(example['event_id'])
-            label_masks.append(example['label_mask'])
-            trigger_index.append(example['trigger_index'])
-            labels.append(example['label'])
-            spans.append(example['spans'])
-            span_lens.append(example['span_lens'])
-            span_nums.append(example['span_num'])
-            subwords_span2snts.append(example['subwords_span2snt'])
-            subwords_snt2spans.append(example['subwords_snt2span'])
-            trigger_snt_ids.append(example['trigger_snt_id'])
-            info_dicts.append(example['info_dict'])
+            input_ids.append(torch.LongTensor(example["input_ids"]))
+            event_ids.append(example["event_id"])
+            label_masks.append(example["label_mask"])
+            trigger_index.append(example["trigger_index"])
+            labels.append(example["label"])
+            spans.append(example["spans"])
+            span_lens.append(example["span_lens"])
+            span_nums.append(example["span_num"])
+            subwords_span2snts.append(example["subwords_span2snt"])
+            subwords_snt2spans.append(example["subwords_snt2span"])
+            trigger_snt_ids.append(example["trigger_snt_id"])
+            info_dicts.append(example["info_dict"])
 
-            start_labels.append(torch.LongTensor(example['start_label']))
-            end_labels.append(torch.LongTensor(example['end_label']))
+            start_labels.append(torch.LongTensor(example["start_label"]))
+            end_labels.append(torch.LongTensor(example["end_label"]))
 
         max_span_num = max(span_nums)
         max_sent_num = max([len(x) for x in subwords_snt2spans])
@@ -585,17 +668,21 @@ def main():
         pad_labels = []
         pad_subwords_span2snts = []
         pad_subwords_snt2spans = []
-        for span, span_len, label, subwords_span2snt, info_dict in zip(spans, span_lens, labels, subwords_span2snts, info_dicts):
+        for span, span_len, label, subwords_span2snt, info_dict in zip(
+            spans, span_lens, labels, subwords_span2snts, info_dicts
+        ):
             pad_num = max_span_num - len(span)
-            pad_spans.append(span + [[0,0]] * pad_num)
+            pad_spans.append(span + [[0, 0]] * pad_num)
             pad_span_lens.append(span_len + [1] * pad_num)
             pad_labels.append(label + [LABEL_PAD] * pad_num)
             pad_subwords_span2snts.append(subwords_span2snt + [0] * pad_num)
         for subwords_snt2span in subwords_snt2spans:
             pad_num = max_sent_num - len(subwords_snt2span)
-            pad_subwords_snt2spans.append(subwords_snt2span+[[0, 0]]*pad_num)
+            pad_subwords_snt2spans.append(subwords_snt2span + [[0, 0]] * pad_num)
 
-        input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_value=VOCAB_PAD)
+        input_ids = torch.nn.utils.rnn.pad_sequence(
+            input_ids, batch_first=True, padding_value=VOCAB_PAD
+        )
         info_dicts = info_dicts
         spans = torch.LongTensor(pad_spans)
         event_ids = torch.LongTensor(event_ids)
@@ -603,20 +690,24 @@ def main():
         labels = torch.LongTensor(pad_labels)
         label_masks = torch.LongTensor(label_masks)
         trigger_index = torch.LongTensor(trigger_index)
-        start_labels = torch.nn.utils.rnn.pad_sequence(start_labels, batch_first=True, padding_value=LABEL_PAD)
-        end_labels = torch.nn.utils.rnn.pad_sequence(end_labels, batch_first=True, padding_value=LABEL_PAD)
+        start_labels = torch.nn.utils.rnn.pad_sequence(
+            start_labels, batch_first=True, padding_value=LABEL_PAD
+        )
+        end_labels = torch.nn.utils.rnn.pad_sequence(
+            end_labels, batch_first=True, padding_value=LABEL_PAD
+        )
 
         result = {
-            'input_ids': input_ids,
-            'labels': labels,
-            'attention_mask': input_ids!= VOCAB_PAD,
-            'spans': spans,
-            'span_lens': span_lens,
-            'label_masks': label_masks,
-            'trigger_index': trigger_index,
-            'info_dicts': info_dicts,
-            'start_labels': start_labels,
-            'end_labels': end_labels
+            "input_ids": input_ids,
+            "labels": labels,
+            "attention_mask": input_ids != VOCAB_PAD,
+            "spans": spans,
+            "span_lens": span_lens,
+            "label_masks": label_masks,
+            "trigger_index": trigger_index,
+            "info_dicts": info_dicts,
+            "start_labels": start_labels,
+            "end_labels": end_labels,
         }
         return result
 
@@ -629,7 +720,7 @@ def main():
         compute_metrics=compute_metrics,
         tokenizer=tokenizer,
         data_collator=collator_fn,
-        not_bert_learning_rate=model_args.not_bert_learning_rate
+        not_bert_learning_rate=model_args.not_bert_learning_rate,
     )
 
     # Training
@@ -640,7 +731,10 @@ def main():
         elif os.path.isdir(model_args.model_name_or_path):
             # Check the config from that potential checkpoint has the right number of labels before using it as a
             # checkpoint.
-            if AutoConfig.from_pretrained(model_args.model_name_or_path).num_labels == num_labels:
+            if (
+                AutoConfig.from_pretrained(model_args.model_name_or_path).num_labels
+                == num_labels
+            ):
                 checkpoint = model_args.model_name_or_path
 
         train_result = trainer.train(resume_from_checkpoint=checkpoint)
@@ -654,17 +748,20 @@ def main():
         trainer.save_state()
 
     if training_args.do_eval:
+
         def extract_word_level_result(preds, labels, spans, dataset):
             all_result = []
-            for i, (pred, label, span, example) in enumerate(zip(preds, labels, spans, dataset)):
-                example = json.loads(example['text'])
-                doc_key = example['doc_key']
+            for i, (pred, label, span, example) in enumerate(
+                zip(preds, labels, spans, dataset)
+            ):
+                example = json.loads(example["text"])
+                doc_key = example["doc_key"]
                 result = {
-                    'doc_key': doc_key,
-                    'predictions': [[]],
+                    "doc_key": doc_key,
+                    "predictions": [[]],
                 }
-                sentences = example['sentences']
-                trigger = example['evt_triggers'][0]
+                sentences = example["sentences"]
+                trigger = example["evt_triggers"][0]
                 trigger_b, trigger_e, event = trigger[0], trigger[1], trigger[2][0][0]
                 eventid = event2id[event]
                 start_subwordidx2wordidx = [-1]
@@ -678,36 +775,43 @@ def main():
                         if word_idx == trigger_e + 1:
                             start_subwordidx2wordidx.append(-1)  # Special token
                             end_subwordidx2wordidx.append(-1)
-                        subwords_ids = tokenizer(word, add_special_tokens=False, return_attention_mask=False)['input_ids']
+                        subwords_ids = tokenizer(
+                            word, add_special_tokens=False, return_attention_mask=False
+                        )["input_ids"]
                         start_subwordidx2wordidx.append(word_idx)
                         for _ in range(1, len(subwords_ids)):
                             start_subwordidx2wordidx.append(-1)
-                        for _ in range(len(subwords_ids)-1):
+                        for _ in range(len(subwords_ids) - 1):
                             end_subwordidx2wordidx.append(-1)
                         end_subwordidx2wordidx.append(word_idx)
                         word_idx += 1
                 start_subwordidx2wordidx.append(-1)
                 end_subwordidx2wordidx.append(-1)
 
-                result['predictions'][0].append([trigger_b, trigger_e])
+                result["predictions"][0].append([trigger_b, trigger_e])
                 all_ready_in_result = set()
                 for pe, l, sp in zip(pred, label, span):
                     if l == -100 or sp[1] - sp[0] + 1 > data_args.span_len or pe == 0:
                         continue
                     role_name = eventid2id2role[eventid][pe]
-                    if data_args.task_name == 'rams':
-                        role_name = role_name[role_name.find('arg0')+5:]
-                    if start_subwordidx2wordidx[sp[0]] == -1 or end_subwordidx2wordidx[sp[1]] == -1:
+                    if data_args.task_name == "rams":
+                        role_name = role_name[role_name.find("arg0") + 5 :]
+                    if (
+                        start_subwordidx2wordidx[sp[0]] == -1
+                        or end_subwordidx2wordidx[sp[1]] == -1
+                    ):
                         continue
-                    final_r = tuple([
-                        start_subwordidx2wordidx[sp[0]],
-                        end_subwordidx2wordidx[sp[1]],
-                        role_name,
-                        1.0
-                    ])
+                    final_r = tuple(
+                        [
+                            start_subwordidx2wordidx[sp[0]],
+                            end_subwordidx2wordidx[sp[1]],
+                            role_name,
+                            1.0,
+                        ]
+                    )
                     if final_r not in all_ready_in_result:
                         all_ready_in_result.add(final_r)
-                        result['predictions'][0].append(list(final_r))
+                        result["predictions"][0].append(list(final_r))
                 all_result.append(result)
             return all_result
 
@@ -720,12 +824,16 @@ def main():
         logger.info(preds)
         logger.info(spans)
         logger.info(labels)
-        output_validation_file = os.path.join(training_args.output_dir, "validation_predictions_span.jsonlines")
+        output_validation_file = os.path.join(
+            training_args.output_dir, "validation_predictions_span.jsonlines"
+        )
         if trainer.is_world_process_zero():
-            result = extract_word_level_result(preds=preds, labels=labels, spans=spans, dataset=eval_dataset)
-            with open(output_validation_file, 'w') as f:
+            result = extract_word_level_result(
+                preds=preds, labels=labels, spans=spans, dataset=eval_dataset
+            )
+            with open(output_validation_file, "w") as f:
                 for r in result:
-                    f.write(json.dumps(r)+'\n')
+                    f.write(json.dumps(r) + "\n")
 
         # on test
         p = trainer.predict(test_dataset=test_dataset)
@@ -733,15 +841,19 @@ def main():
         preds = np.argmax(preds, axis=-1)
         spans = p.predictions[1] if isinstance(p.predictions, tuple) else None
         labels = p.label_ids
-        output_test_file = os.path.join(training_args.output_dir, "test_predictions_span.jsonlines")
+        output_test_file = os.path.join(
+            training_args.output_dir, "test_predictions_span.jsonlines"
+        )
         if trainer.is_world_process_zero():
-            result = extract_word_level_result(preds=preds, labels=labels, spans=spans, dataset=test_dataset)
-            with open(output_test_file, 'w') as f:
+            result = extract_word_level_result(
+                preds=preds, labels=labels, spans=spans, dataset=test_dataset
+            )
+            with open(output_test_file, "w") as f:
                 for r in result:
-                    f.write(json.dumps(r)+'\n')
+                    f.write(json.dumps(r) + "\n")
 
     # log settings
-    with open(os.path.join(training_args.output_dir, 'myconfig.json'), 'w') as f:
+    with open(os.path.join(training_args.output_dir, "myconfig.json"), "w") as f:
         f.write(json.dumps(vars(model_args), indent=4))
 
 
@@ -751,6 +863,8 @@ def _mp_fn(index):
 
 
 if __name__ == "__main__":
-    # wandb.init(project="event-extraction-tsar")  
-    os.environ["WANDB_DISABLED"] = "true"  # Wandb cannot be used due to our internal servers. If you have any requirements, you can use Wandb.
+    # wandb.init(project="event-extraction-tsar")
+    os.environ["WANDB_DISABLED"] = (
+        "true"  # Wandb cannot be used due to our internal servers. If you have any requirements, you can use Wandb.
+    )
     main()
