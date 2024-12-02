@@ -4,6 +4,7 @@ import json
 IN:
     - /data/wikievents/{}.jsonl
     - /data/wikievents/coref/{}.jsonlines
+    - with meta data
 
 OUT:
 
@@ -16,6 +17,9 @@ def preprocess_function(example, idx, split):
     sentences = example["sentences"]
     snt2span = []
     start, end = 0, 0
+
+    # snt2span
+    # [[문장 시작 span idx, 문장 마지막 span idx],]
     for idx, sen in enumerate(sentences):
         end = start + len(sen) - 1
         snt2span.append([start, end])
@@ -29,8 +33,16 @@ def preprocess_function(example, idx, split):
         assert False
 
     trigger = example["evt_triggers"][0]
+    # trigger_b = trigger 시작하는 span: 155
+    # trigger_e = trigger 끝나는 span: 155
+    # event = trigger에 대한 event type: 'Contact.Contact.Broadcast'
     trigger_b, trigger_e, event = trigger[0], trigger[1], trigger[2][0][0]
+    # trigger_snt_id = trigger가 속한 문장의 idx: 0
     trigger_snt_id = which_snt(snt2span, [trigger_b, trigger_e])
+
+    # ["Cognitive.IdentifyCategorize.Unspecified", ["Place", "IdentifiedRole", "IdentifiedObject", "Identifier"]]
+    # event2id = { 'Contact.Contact.Broadcast': 0, ... } -> from meta file. ontology마다 새로 정의되지만, 데이터셋에 따라 정의되지는 않는 정보들.
+    # eventid = event 자체 : 0
     eventid = event2id[event]
 
     now_snt_idx = 0
@@ -38,6 +50,7 @@ def preprocess_function(example, idx, split):
     subwords_snt2span = []
     wordidx2subwordidx = []
 
+    # 제거할 토큰들. but span 정보는 남겨둬야 하므로...?
     exclude_words = []  # non-argument spans exclusion
     if data_args.task_name == "wikievent":
         exclude_symbols = [
@@ -48,6 +61,7 @@ def preprocess_function(example, idx, split):
         ]  # We select some normal symols that can not appear in the middle of a argument span. For different datasets, you can choose different symbols.
     else:
         exclude_symbols = [",", ".", "!", "?", ":"]
+
     for i, sentence in enumerate(sentences):
         subwords_snt2span_st = len(input_ids)
         for j, word in enumerate(sentence):
@@ -186,11 +200,21 @@ def preprocess_function(example, idx, split):
     result = {
         "idx": idx,
         "split": split,
+        # desc: tookneizer 결과
+        # 변경전: sentence + event + role
+        # 변경후: sentence + [event + role] + ...
         "input_ids": input_ids,
+        # desc: w
         "label": span_labels,
+        # desc: 모든 spans 조합(role도 포함)
         "spans": spans,
+        # desc: eventid
+        # num
+        # num[]
         "event_id": eventid,
+        # desc: "spans"의 각 스판의 길이
         "span_lens": span_lens,
+        # desc: label의 위치
         "label_mask": label_mask,
         "trigger_index": trigger_index,
         "span_num": span_num,

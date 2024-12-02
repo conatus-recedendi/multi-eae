@@ -1,0 +1,28 @@
+{
+  "text": "",
+  "idx": 0,
+  "split": "test",
+  // [CLS] context [SEP] [EVT1] event [EVT1] [Arg][Arg]
+  "input_ids": [1, 1, 2, 3, 4, 5],
+  "labels": [
+    [41, 40, 0, 0, 0],
+    [41, 39, 0, 0, 0]
+  ],
+  "event_ids": [10, 20],
+  "spans": [
+    [1, 2],
+    [2, 3]
+  ],
+  "span_lens": [1, 1],
+  "label_mask": [1, 0, 0, 0, 0],
+  "start_label": [1, 0, 0, 0, 0],
+  "end_label": [0, 1, 0, 0, 0],
+  "info_dict": [
+    {
+      "event_ids": [39, 40, 41],
+      "event_idx": 36,
+      "role_idxs": [41, 44, 47, 50],
+      "words_num": 36
+    }
+  ]
+}

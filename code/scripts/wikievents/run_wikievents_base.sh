@@ -20,13 +20,13 @@ EVENT_EMBEDDING_SIZE=200
 TRAIN_EPOCH=100
 seeds=(1000)
 EPOCH=50
-MAX_LEN=1024
-TRAIN_FILE=../../../data/wikievents/transfer-train.jsonl
-DEV_FILE=../../../data/wikievents/transfer-dev.jsonl
-TEST_FILE=../../../data/wikievents/transfer-test.jsonl
-META_FILE=../../../data/wikievents/meta.json
-CACHE_DIR=../../../cache/wikievents-base
-OUTPUT_DIR=../../../output/wikievents-base_seed${SEED}
+MAX_LEN=768
+TRAIN_FILE=../../../data/wikievents/transfer-train-new-multi.jsonl
+DEV_FILE=../../../data/wikievents/transfer-dev-new-multi.jsonl
+TEST_FILE=../../../data/wikievents/transfer-test-new-multi.jsonl
+META_FILE=../data/wikievents/meta.json
+CACHE_DIR=../cache/wikievents-base
+OUTPUT_DIR=../output/wikievents-base_seed${SEED}
 
 # main
 for SEED in ${seeds[@]}
@@ -65,6 +65,6 @@ python train_EAE.py \
 --event_embedding_size ${EVENT_EMBEDDING_SIZE} \
 --span_len_embedding_range ${HIDDEN_SIZE} \
 --span_len_embedding_hidden_size ${HIDDEN_SIZE} \
---cache_dir ${CACHE_DIR}
+--cache_dir ${CACHE_DIR} 
 done
 fi

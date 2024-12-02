@@ -21,12 +21,14 @@ import os
 import re
 import random
 import sys
+import copy
 from dataclasses import dataclass, field
 from typing import Optional
 
 # import wandb
 import numpy as np
 from datasets import load_dataset, load_metric
+from utils import EXTERNAL_TOKENS, MAX_NUM_EVENTS, MAX_NUM_ARGUMENTS
 
 
 import transformers
@@ -50,7 +52,7 @@ import json
 import torch
 import collections
 from tqdm import tqdm
-from model import MyBertmodel, MyRobertamodel
+from my_model import MyBertmodel
 from trainer import Mytrainer
 
 logger = logging.getLogger(__name__)
@@ -282,6 +284,10 @@ def main():
             revision=model_args.model_revision,
             use_auth_token=True if model_args.use_auth_token else None,
         )
+        new_token_list = copy.deepcopy(EXTERNAL_TOKENS)
+
+        # r = tokenizer.add_tokens(new_token_list)
+
         model = MyBertmodel.from_pretrained(
             model_args.model_name_or_path,
             from_tf=bool(".ckpt" in model_args.model_name_or_path),
@@ -296,77 +302,99 @@ def main():
         TRIGGER_RIGHT = 6
         EVENT_START = 104  # special token for event
         ROLE_START = 400  # special token for roles
-    elif model_args.model_name_or_path.startswith("roberta"):
-        tokenizer = RobertaTokenizer.from_pretrained(
-            (
-                model_args.tokenizer_name
-                if model_args.tokenizer_name
-                else model_args.model_name_or_path
-            ),
-            cache_dir=model_args.cache_dir,
-            use_fast=model_args.use_fast_tokenizer,
-            revision=model_args.model_revision,
-            use_auth_token=True if model_args.use_auth_token else None,
-        )
-        model = MyRobertamodel.from_pretrained(
-            model_args.model_name_or_path,
-            from_tf=bool(".ckpt" in model_args.model_name_or_path),
-            config=config,
-            cache_dir=model_args.cache_dir,
-            revision=model_args.model_revision,
-            use_auth_token=True if model_args.use_auth_token else None,
-            lambda_boundary=model_args.lambda_boundary,
-            event_embedding_size=model_args.event_embedding_size,
-        )
-        TRIGGER_LEFT = tokenizer("[")["input_ids"][1]
-        TRIGGER_RIGHT = tokenizer("]")["input_ids"][1]
-        ROLE_START = len(tokenizer) + len(event2id)
-        EVENT_START = len(tokenizer)
-        event_nums = len(event2id)
-        role_nums = num_labels
-        special_tokens_dict = {"additional_special_tokens": []}
-        for i_e in range(event_nums):
-            special_tokens_dict["additional_special_tokens"].append(
-                "[unused" + str(EVENT_START + i_e) + "]"
-            )
-        for i_r in range(role_nums):
-            special_tokens_dict["additional_special_tokens"].append(
-                "[unused" + str(ROLE_START + i_r) + "]"
-            )
-        num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
-        model.resize_token_embeddings(len(tokenizer))  # update the embedding
+        # TODO implement roberta
+    # elif model_args.model_name_or_path.startswith("roberta"):
+    #     tokenizer = RobertaTokenizer.from_pretrained(
+    #         (
+    #             model_args.tokenizer_name
+    #             if model_args.tokenizer_name
+    #             else model_args.model_name_or_path
+    #         ),
+    #         cache_dir=model_args.cache_dir,
+    #         use_fast=model_args.use_fast_tokenizer,
+    #         revision=model_args.model_revision,
+    #         use_auth_token=True if model_args.use_auth_token else None,
+    #     )
+    #     model = MyRobertamodel.from_pretrained(
+    #         model_args.model_name_or_path,
+    #         from_tf=bool(".ckpt" in model_args.model_name_or_path),
+    #         config=config,
+    #         cache_dir=model_args.cache_dir,
+    #         revision=model_args.model_revision,
+    #         use_auth_token=True if model_args.use_auth_token else None,
+    #         lambda_boundary=model_args.lambda_boundary,
+    #         event_embedding_size=model_args.event_embedding_size,
+    #     )
+    #     TRIGGER_LEFT = tokenizer("[")["input_ids"][1]
+    #     TRIGGER_RIGHT = tokenizer("]")["input_ids"][1]
+    #     ROLE_START = len(tokenizer) + len(event2id)
+    #     EVENT_START = len(tokenizer)
+    #     event_nums = len(event2id)
+    #     role_nums = num_labels
+    #     special_tokens_dict = {"additional_special_tokens": []}
+    #     for i_e in range(event_nums):
+    #         special_tokens_dict["additional_special_tokens"].append(
+    #             "[unused" + str(EVENT_START + i_e) + "]"
+    #         )
+    #     for i_r in range(role_nums):
+    #         special_tokens_dict["additional_special_tokens"].append(
+    #             "[unused" + str(ROLE_START + i_r) + "]"
+    #         )
+    #     num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
+    #     model.resize_token_embeddings(len(tokenizer))  # update the embedding
     else:
         assert False
 
     def preprocess_function(example, idx, split):
         example = json.loads(example["text"])
-        doc_key = example["doc_key"]
-        sentences = example["sentences"]
+        doc_id = example["doc_id"]
+        sentences = [token[0] for item in example["sentences"] for token in item[0]]
         snt2span = []
         start, end = 0, 0
         for idx, sen in enumerate(sentences):
-            end = start + len(sen) - 1
+            end = start + len(sen[0]) - 1
             snt2span.append([start, end])
-            start = start + len(sen)
+            start = start + len(sen[0])
 
-        def which_snt(snt2span, span):
+        def which_snt(snt2span, span, original):
             for snt in range(len(snt2span)):
                 snt_spans = snt2span[snt]
                 if span[0] >= snt_spans[0] and span[1] <= snt_spans[1]:
                     return snt
+
             assert False
 
-        trigger = example["evt_triggers"][0]
-        trigger_b, trigger_e, event = trigger[0], trigger[1], trigger[2][0][0]
-        trigger_snt_id = which_snt(snt2span, [trigger_b, trigger_e])
-        eventid = event2id[event]
+        triggers_begin = []
+        triggers_end = []
+        events = []
+        events_id = []
+        triggers_snt_id = []
+
+        for i, (event_mention) in enumerate(example["event_mentions"]):
+
+            # by event
+            # logger.info(f"event_mention: {event_mention}")
+            trigger_begin, trigger_end, event = (
+                event_mention["trigger"]["start"],
+                event_mention["trigger"]["end"] - 1,
+                event_mention["event_type"],
+            )
+            # by event
+            trigger_snt_id = event_mention["trigger"]["sent_idx"]
+            # by event
+            eventid = event2id[event]
+
+            triggers_begin.append(trigger_begin)
+            triggers_end.append(trigger_end)
+            events.append(event)
+            events_id.append(eventid)
+            triggers_snt_id.append(trigger_snt_id)
 
         now_snt_idx = 0
         input_ids = [tokenizer.cls_token_id]
         subwords_snt2span = []
         wordidx2subwordidx = []
-
-        exclude_words = []  # non-argument spans exclusion
+        exclude_words = []
         if data_args.task_name == "wikievent":
             exclude_symbols = [
                 ",",
@@ -376,21 +404,36 @@ def main():
             ]  # We select some normal symols that can not appear in the middle of a argument span. For different datasets, you can choose different symbols.
         else:
             exclude_symbols = [",", ".", "!", "?", ":"]
+
+        current_event_cnt = 0
         for i, sentence in enumerate(sentences):
             subwords_snt2span_st = len(input_ids)
             for j, word in enumerate(sentence):
-
-                if now_snt_idx == trigger_b:
+                if now_snt_idx in triggers_begin:
                     trig_sub_s = len(input_ids)
                     exclude_words.append(trig_sub_s)
-                    input_ids.append(TRIGGER_LEFT)  # Special token
-                if now_snt_idx == trigger_e + 1:
+                    input_ids.extend(
+                        tokenizer(
+                            f"<t-{current_event_cnt}>",
+                            add_special_tokens=False,
+                            return_attention_mask=False,
+                        )["input_ids"]
+                    )  # Special token
+                if now_snt_idx in triggers_end:
                     trig_sub_e = len(input_ids)
                     exclude_words.append(trig_sub_e)
-                    input_ids.append(TRIGGER_RIGHT)  # Special token
+                    input_ids.extend(
+                        tokenizer(
+                            f"</t-{current_event_cnt}>",
+                            add_special_tokens=False,
+                            return_attention_mask=False,
+                        )["input_ids"]
+                    )
+
                 subwords_ids = tokenizer(
                     word, add_special_tokens=False, return_attention_mask=False
                 )["input_ids"]
+
                 if word in exclude_symbols:
                     exclude_idx = []
                     for kk in range(len(subwords_ids)):
@@ -398,100 +441,181 @@ def main():
                     exclude_words.extend(exclude_idx)
                 wordidx2subwordidx.append(
                     (len(input_ids), len(input_ids) + len(subwords_ids) - 1)
-                )  # [a, b]
+                )
                 input_ids.extend(subwords_ids)
                 now_snt_idx += 1
             subwords_snt2span.append([subwords_snt2span_st, len(input_ids) - 1])
 
-        model_max_len = 1024
-        max_role_token_len = 30  # We set the max length of role list 30
+        model_max_len = 768
+        max_role_token_len = 36
 
         spans = []
         span_lens = []
-        span_labels = []
-        label_mask = [0] * num_labels
-        label_mask[0] = 1
-        label_mask = np.array(label_mask)
         subwords_span2snt = []
-        for link in example["gold_evt_links"]:
-            role_b, role_e = link[1]
-            role = link[-1]
-            if role not in eventid2role2id[eventid]:
-                continue
-            roleid = eventid2role2id[eventid][role]
-            base_roleid = list(eventid2id2role[eventid].keys())[0]
-            upper_roleid = list(eventid2id2role[eventid].keys())[-1]
-            label_mask[base_roleid : upper_roleid + 1] = 1
-            role_subword_start_idx = wordidx2subwordidx[role_b][0]
-            role_subword_end_idx = wordidx2subwordidx[role_e][-1]
-            if role_subword_end_idx < model_max_len:
-                spans.append([role_subword_start_idx, role_subword_end_idx])
-                subwords_span2snt.append(which_snt(subwords_snt2span, spans[-1]))
-                span_lens.append(
-                    min(
-                        role_subword_end_idx - role_subword_start_idx,
-                        config.len_size - 1,
-                    )
-                )
-                span_labels.append(roleid)
 
-        role_nums = label_mask.sum() - 1
-        role_list = list(eventid2id2role[eventid].values())
-        role_id_list = list(eventid2id2role[eventid].keys())
-        if data_args.task_name == "rams":
-            for itt in range(len(role_list)):
-                role_list[itt] = role_list[itt].split("arg")[-1][2:]
+        labels_mask = []
+        spans_labels = []
+
+        for i, (trigger_b, trigger_e, event, trigger_snt_id, event_id) in enumerate(
+            zip(triggers_begin, triggers_end, events, triggers_snt_id, events_id)
+        ):
+            span_labels = []
+            label_mask = [0] * num_labels
+            label_mask[0] = 1
+            label_mask = np.array(label_mask)
+
+            for argument in example["event_mentions"][i]["arguments"]:
+                # logger.info(f"argument: {argument}")
+                role_begin, role_end = argument["start"], argument["end"] - 1
+                role = argument["role"]
+                if role not in eventid2role2id[event_id]:
+                    continue
+
+                roleid = eventid2role2id[event_id][role]
+                base_roleid = list(eventid2id2role[event_id].keys())[0]
+                upper_roleid = list(eventid2id2role[event_id].keys())[-1]
+                label_mask[base_roleid : upper_roleid + 1] = 1
+                role_subword_start_idx = wordidx2subwordidx[role_begin][0]
+
+                role_subword_end_idx = wordidx2subwordidx[role_end][-1]
+                if role_subword_end_idx < model_max_len:
+                    spans.append([role_subword_start_idx, role_subword_end_idx])
+                    # MEMO: 오류. 그런데 snt 구하는 부분인데 word랑은 무관해야 함
+                    # subwords_span2snt.append(
+                    #     which_snt(subwords_snt2span, spans[-1], argument)
+                    # )
+                    span_lens.append(
+                        min(
+                            role_subword_end_idx - role_subword_start_idx,
+                            config.len_size - 1,
+                        )
+                    )
+                    span_labels.append(roleid)
+
+            labels_mask.append(label_mask)
+            spans_labels.append(span_labels)
+
+        role_nums = 0
+        for label_mask in labels_mask:
+            role_nums += label_mask.sum() - 1
+
         if len(input_ids) > model_max_len - 1:
             input_ids = input_ids[
-                : model_max_len - max_role_token_len - role_nums
-            ]  # 这里默认角色
-        input_ids.append(tokenizer.sep_token_id)
+                : model_max_len - (len(event)) * 6 - max_role_token_len - role_nums * 6
+            ]
+
+        info_dict = {
+            "event_ids": [],
+            "event_idx": [],
+            "role_idxs": [],
+            "words_num": 0,
+        }
         ari_len = len(input_ids)
+        info_dict["words_num"] = ari_len + 1
 
-        event_split_list = event.split(".")
-        event_tok = EVENT_START + eventid
+        argument_cnt = 0
+        roles_idx = []
+        for i, (trigger_b, trigger_e, event, trigger_snt_id, event_id) in enumerate(
+            zip(triggers_begin, triggers_end, events, triggers_snt_id, events_id)
+        ):
+            role_list = list(eventid2id2role[event_id].values())
+            role_id_list = list(eventid2id2role[event_id].keys())
+            if data_args.task_name == "rams":
+                for itt in range(len(role_list)):
+                    role_list[itt] = role_list[itt].split("arg")[-1][2:]
 
-        input_ids.append(event_tok)
-        info_dict = {}
-        info_dict["words_num"] = ari_len
-        info_dict["event_idx"] = len(input_ids) - 1
-        info_dict["event_ids"] = role_id_list
+            input_ids.append(tokenizer.sep_token_id)
 
-        for item in event_split_list:
-            event_subwords_ids = tokenizer(
-                item, add_special_tokens=False, return_attention_mask=False
-            )["input_ids"]
-            input_ids.extend(event_subwords_ids)
-        input_ids.append(event_tok)
-        role_idx = []
+            event_split_list = event.split(".")
+            event_tok = EVENT_START + event_id
 
-        for rr, role_t in enumerate(role_list):
-            role_subwords_ids = tokenizer(
-                role_t, add_special_tokens=False, return_attention_mask=False
-            )["input_ids"]
-            input_ids.append(ROLE_START + role_id_list[rr])
+            input_ids.extend(
+                tokenizer(
+                    f"<e-{i}>",
+                    add_special_tokens=False,
+                    return_attention_mask=False,
+                )["input_ids"]
+            )
+
+            info_dict["event_idx"].append(len(input_ids) - 1)
+            info_dict["event_ids"].append(role_id_list)
+
+            for item in event_split_list:
+                event_subwords_ids = tokenizer(
+                    item, add_special_tokens=False, return_attention_mask=False
+                )["input_ids"]
+                input_ids.extend(event_subwords_ids)
+
+            input_ids.extend(
+                tokenizer(
+                    f"</e-{i}>",
+                    add_special_tokens=False,
+                    return_attention_mask=False,
+                )["input_ids"]
+            )
+
+            role_idx = []
+            for rr, role_t in enumerate(role_list):
+                if argument_cnt > MAX_NUM_ARGUMENTS:
+                    logger.warning(
+                        f"Error: Max_Num_ARGUMENT exceed. argument_cnt: {argument_cnt}:"
+                    )
+                    break
+                role_subwords_ids = tokenizer(
+                    role_t, add_special_tokens=False, return_attention_mask=False
+                )["input_ids"]
+                input_ids.extend(
+                    tokenizer(
+                        f"<r-{argument_cnt}>",
+                        add_special_tokens=False,
+                        return_attention_mask=False,
+                    )["input_ids"]
+                )
+                # input_ids.append(ROLE_START + role_id_list[rr])
+                info_dict["role_idxs"].append(len(input_ids) - 1)
+                input_ids.extend(role_subwords_ids)
+
+                input_ids.extend(
+                    tokenizer(
+                        f"</r-{argument_cnt}>",
+                        add_special_tokens=False,
+                        return_attention_mask=False,
+                    )["input_ids"]
+                )
+                # input_ids.append(ROLE_START + role_id_list[rr])
+                argument_cnt += 1
             role_idx.append(len(input_ids) - 1)
-            input_ids.extend(role_subwords_ids)
-            input_ids.append(ROLE_START + role_id_list[rr])
+            roles_idx.append(role_idx)
+        input_ids.append(tokenizer.sep_token_id)
+        info_dict["role_idxs"] = roles_idx
 
-        input_ids.append(ROLE_START)
-        role_idx.append(len(input_ids) - 1)  # 空类标签
-        info_dict["role_idxs"] = role_idx
+        triggers_index = []
+        starts_label = []
+        ends_label = []
 
-        trigger_index = (
-            wordidx2subwordidx[trigger_b][0] - 1
-        )  # 这里用special token 代表触发词
-        trigger_index = min(
-            trigger_index, len(input_ids) - 1
-        )  # very few times it would be out of bound so we have to ...
+        for i, (trigger_b, trigger_e, event, trigger_snt_id, event_id) in enumerate(
+            zip(triggers_begin, triggers_end, events, triggers_snt_id, events_id)
+        ):
+            trigger_index = wordidx2subwordidx[trigger_b][0] - 1
+            trigger_index = min(trigger_index, len(input_ids) - 1)
+            triggers_index.append(trigger_index)
 
-        # construct start label and end label
         start_label = [0 for _ in range(len(input_ids))]
         end_label = [0 for _ in range(len(input_ids))]
+        words_num = info_dict["words_num"]
         for start_end_span in spans:
             start, end = start_end_span
-            start_label[start] = 1
-            end_label[end] = 1
+            if (
+                (start > words_num)
+                or (end > words_num)
+                or (start > len(input_ids))
+                or (end > len(input_ids))
+            ):
+                print(start, end, len(input_ids), words_num)
+
+            if start < len(input_ids) and end < len(input_ids):
+                start_label[start] = 1
+                end_label[end] = 1
 
         # construct negative examples
         all_non_spans = []
@@ -500,6 +624,10 @@ def main():
             end_idx = min(end_idx, model_max_len - 1)
             for s in range(start_idx, end_idx + 1):
                 for e in range(s, end_idx + 1):
+                    if s >= words_num:
+                        continue
+                    if e >= words_num:
+                        continue
                     flag = 0
                     if e - s + 1 <= data_args.span_len:
                         for kkk in range(s, e + 1):
@@ -513,17 +641,16 @@ def main():
         span_lens.extend([x[1] - x[0] for x in all_non_spans])
         span_labels.extend([0] * len(all_non_spans))
         span_num = len(spans)
-
         result = {
             "idx": idx,
             "split": split,
             "input_ids": input_ids,
-            "label": span_labels,
+            "label": spans_labels,
             "spans": spans,
             "event_id": eventid,
             "span_lens": span_lens,
-            "label_mask": label_mask,
-            "trigger_index": trigger_index,
+            "label_mask": labels_mask,
+            "trigger_index": triggers_index,
             "span_num": span_num,
             "subwords_span2snt": subwords_span2snt,
             "subwords_snt2span": subwords_snt2span,
@@ -534,6 +661,17 @@ def main():
             "start_label": start_label,
             "end_label": end_label,
         }
+
+        if len(input_ids) > 1024:
+            logger.warning(
+                f"Input_ids Exceed maximum context: {doc_id}, len: {len(input_ids)}"
+            )
+
+        if idx == 0:
+            # write result as json
+            with open("new_after_preprocess.json", "w") as f:
+                json.dump(result, f, indent=4)
+
         return result
 
     train_dataset = datasets["train"].map(
@@ -544,6 +682,7 @@ def main():
         fn_kwargs={"split": "train"},
         num_proc=6,
     )
+
     eval_dataset = datasets["validation"].map(
         preprocess_function,
         batched=False,
@@ -560,6 +699,7 @@ def main():
         fn_kwargs={"split": "test"},
         num_proc=6,
     )
+    # train_dataset = test_dataset
 
     # Log a few random samples from the training set:
     if training_args.do_train:
@@ -674,7 +814,10 @@ def main():
             pad_num = max_span_num - len(span)
             pad_spans.append(span + [[0, 0]] * pad_num)
             pad_span_lens.append(span_len + [1] * pad_num)
-            pad_labels.append(label + [LABEL_PAD] * pad_num)
+            # label = [[ 1, 2,], [2, 3]]
+            # pad_labels = [[[1, 2, 0, 0], [2, 3, 0, 0]]]
+            pad_labels.append([sublist + [LABEL_PAD] * pad_num for sublist in label])
+            # print("pad_labels:", pad_labels)
             pad_subwords_span2snts.append(subwords_span2snt + [0] * pad_num)
         for subwords_snt2span in subwords_snt2spans:
             pad_num = max_sent_num - len(subwords_snt2span)
@@ -709,6 +852,9 @@ def main():
             "start_labels": start_labels,
             "end_labels": end_labels,
         }
+
+        print("after collator_fn")
+        print(result)
         return result
 
     # Initialize our Trainer

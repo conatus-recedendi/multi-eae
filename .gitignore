@@ -1,2 +1,8 @@
 ./code/output/**/*
 
+output
+
+cache
+__pycache__
+
+**/*.log

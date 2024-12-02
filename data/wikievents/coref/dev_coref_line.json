@@ -1,0 +1,139 @@
+{
+  "doc_key": "road_ied_8",
+  "clusters": [
+    [
+      "road_ied_8-T148",
+      "road_ied_8-T83",
+      "road_ied_8-T86",
+      "road_ied_8-T92",
+      "road_ied_8-T135",
+      "road_ied_8-T147"
+    ],
+    [
+      "road_ied_8-T7",
+      "road_ied_8-T25",
+      "road_ied_8-T108",
+      "road_ied_8-T89",
+      "road_ied_8-T79",
+      "road_ied_8-T74",
+      "road_ied_8-T61"
+    ],
+    [
+      "road_ied_8-T46",
+      "road_ied_8-T42",
+      "road_ied_8-T40",
+      "road_ied_8-T38",
+      "road_ied_8-T41"
+    ],
+    [
+      "road_ied_8-T10",
+      "road_ied_8-T12",
+      "road_ied_8-T94",
+      "road_ied_8-T48",
+      "road_ied_8-T142",
+      "road_ied_8-T22",
+      "road_ied_8-T32",
+      "road_ied_8-T33",
+      "road_ied_8-T29",
+      "road_ied_8-T2"
+    ],
+    [
+      "road_ied_8-T72",
+      "road_ied_8-T84",
+      "road_ied_8-T5",
+      "road_ied_8-T71",
+      "road_ied_8-T136"
+    ],
+    ["road_ied_8-T39", "road_ied_8-T107"],
+    ["road_ied_8-T9", "road_ied_8-T77", "road_ied_8-T76"],
+    [
+      "road_ied_8-T15",
+      "road_ied_8-T78",
+      "road_ied_8-T60",
+      "road_ied_8-T37",
+      "road_ied_8-T57",
+      "road_ied_8-T88",
+      "road_ied_8-T116",
+      "road_ied_8-T50",
+      "road_ied_8-T82",
+      "road_ied_8-T11",
+      "road_ied_8-T85",
+      "road_ied_8-T143",
+      "road_ied_8-T4",
+      "road_ied_8-T65",
+      "road_ied_8-T24",
+      "road_ied_8-T43"
+    ],
+    ["road_ied_8-T121", "road_ied_8-T118", "road_ied_8-T122"],
+    [
+      "road_ied_8-T55",
+      "road_ied_8-T17",
+      "road_ied_8-T81",
+      "road_ied_8-T123",
+      "road_ied_8-T103",
+      "road_ied_8-T141",
+      "road_ied_8-T111"
+    ],
+    [
+      "road_ied_8-T99",
+      "road_ied_8-T56",
+      "road_ied_8-T6",
+      "road_ied_8-T73",
+      "road_ied_8-T28",
+      "road_ied_8-T100",
+      "road_ied_8-T27"
+    ],
+    ["road_ied_8-T1", "road_ied_8-T20"],
+    ["road_ied_8-T8", "road_ied_8-T59", "road_ied_8-T98", "road_ied_8-T75"],
+    [
+      "road_ied_8-T69",
+      "road_ied_8-T137",
+      "road_ied_8-T91",
+      "road_ied_8-T106",
+      "road_ied_8-T54",
+      "road_ied_8-T87",
+      "road_ied_8-T112"
+    ],
+    ["road_ied_8-T139", "road_ied_8-T129"],
+    ["road_ied_8-T115", "road_ied_8-T125"],
+    [
+      "road_ied_8-T66",
+      "road_ied_8-T146",
+      "road_ied_8-T109",
+      "road_ied_8-T119",
+      "road_ied_8-T131",
+      "road_ied_8-T124"
+    ],
+    ["road_ied_8-T18", "road_ied_8-T19", "road_ied_8-T14", "road_ied_8-T3"],
+    ["road_ied_8-T128", "road_ied_8-T127", "road_ied_8-T138"],
+    ["road_ied_8-T44", "road_ied_8-T45"],
+    ["road_ied_8-T35", "road_ied_8-T34"],
+    ["road_ied_8-T101", "road_ied_8-T67"],
+    ["road_ied_8-T64", "road_ied_8-T62"]
+  ],
+  "informative_mentions": [
+    "Badia al-Sukhnah",
+    "government",
+    "National Defense Forces",
+    "Russia",
+    "countryside",
+    "Assad",
+    "insurgents",
+    "Syria",
+    "Myles Caggins III",
+    "Al-Monitor",
+    "Deir ez-Zor",
+    "IED",
+    "Euphrates River",
+    "Islamic State",
+    "area",
+    "Iraqi",
+    "US",
+    "Vyacheslav Gladkikh",
+    "border",
+    "source",
+    "Tass",
+    "Kurdish",
+    "Idlib province"
+  ]
+}
