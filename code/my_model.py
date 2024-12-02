@@ -351,7 +351,7 @@ class MyBertmodel(BertPreTrainedModel):
                 #
                 span_feature = self.transform_span(span_feature)
 
-                label = labels[:, j]
+                # label = labels[:, j]
                 start_label = start_labels
                 end_label = end_labels
 
@@ -392,11 +392,11 @@ class MyBertmodel(BertPreTrainedModel):
                 #     label_masks.shape, logits.shape, label_masks_expand.shape, span_num
                 # )
                 logits = logits.masked_fill(label_masks_expand == 0, -1e4)
-                if label is not None:
+                if labels is not None:
                     # num_labels = max # of roles
                     focal_loss = MultiCEFocalLoss(self.num_labels)
-                    print(logits.shape, label.shape)
-                    loss += focal_loss(logits[label > -100], label[label > -100])
+
+                    loss += focal_loss(logits[labels > -100], labels[labels > -100])
 
                 # start/end boundary loss
                 if self.lambda_boundary > 0:
@@ -419,7 +419,7 @@ class MyBertmodel(BertPreTrainedModel):
                         )
 
         loss /= len(event_cnt_by_event)
-        print(loss)
+        # print(loss)
         return {
             "loss": loss,
             "logits": logits,

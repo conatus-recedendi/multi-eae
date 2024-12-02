@@ -454,12 +454,12 @@ def main():
         subwords_span2snt = []
 
         labels_mask = []
-        spans_labels = []
+        # spans_labels = []
 
+        span_labels = []
         for i, (trigger_b, trigger_e, event, trigger_snt_id, event_id) in enumerate(
             zip(triggers_begin, triggers_end, events, triggers_snt_id, events_id)
         ):
-            span_labels = []
             label_mask = [0] * num_labels
             label_mask[0] = 1
             label_mask = np.array(label_mask)
@@ -493,7 +493,7 @@ def main():
                     span_labels.append(roleid)
 
             labels_mask.append(label_mask)
-            spans_labels.append(span_labels)
+            # spans_labels.append(span_labels)
 
         role_nums = 0
         for label_mask in labels_mask:
@@ -645,7 +645,7 @@ def main():
             "idx": idx,
             "split": split,
             "input_ids": input_ids,
-            "label": spans_labels,
+            "label": span_labels,
             "spans": spans,
             "event_id": eventid,
             "span_lens": span_lens,
@@ -674,14 +674,14 @@ def main():
 
         return result
 
-    train_dataset = datasets["train"].map(
-        preprocess_function,
-        batched=False,
-        with_indices=True,
-        load_from_cache_file=not data_args.overwrite_cache,
-        fn_kwargs={"split": "train"},
-        num_proc=6,
-    )
+    # train_dataset = datasets["train"].map(
+    #     preprocess_function,
+    #     batched=False,
+    #     with_indices=True,
+    #     load_from_cache_file=not data_args.overwrite_cache,
+    #     fn_kwargs={"split": "train"},
+    #     num_proc=6,
+    # )
 
     eval_dataset = datasets["validation"].map(
         preprocess_function,
@@ -699,7 +699,7 @@ def main():
         fn_kwargs={"split": "test"},
         num_proc=6,
     )
-    # train_dataset = test_dataset
+    train_dataset = test_dataset
 
     # Log a few random samples from the training set:
     if training_args.do_train:
@@ -816,7 +816,8 @@ def main():
             pad_span_lens.append(span_len + [1] * pad_num)
             # label = [[ 1, 2,], [2, 3]]
             # pad_labels = [[[1, 2, 0, 0], [2, 3, 0, 0]]]
-            pad_labels.append([sublist + [LABEL_PAD] * pad_num for sublist in label])
+            # pad_labels.append([sublist + [LABEL_PAD] * pad_num for sublist in label])
+            pad_labels.append(label + [LABEL_PAD] * pad_num)
             # print("pad_labels:", pad_labels)
             pad_subwords_span2snts.append(subwords_span2snt + [0] * pad_num)
         for subwords_snt2span in subwords_snt2spans:
@@ -840,6 +841,8 @@ def main():
             end_labels, batch_first=True, padding_value=LABEL_PAD
         )
 
+        print("wow:", labels.shape, spans.shape)
+
         result = {
             "input_ids": input_ids,
             "labels": labels,
@@ -853,8 +856,6 @@ def main():
             "end_labels": end_labels,
         }
 
-        print("after collator_fn")
-        print(result)
         return result
 
     # Initialize our Trainer
